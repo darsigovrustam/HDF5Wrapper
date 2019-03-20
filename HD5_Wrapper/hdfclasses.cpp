@@ -81,18 +81,18 @@ IHDFStream *   Folder::GetStream(long _index)																																///
 
 long countSubFolders;		// Счетчик поддиректорий
 // Рекурсивный поиск подгрупп в группе
-herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+herr_t group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
 {
 	hid_t subFolderID;										// ID подгруппы		
 
-	subFolderID = H5Gopen2(loc_id, name, H5P_DEFAULT);		// Получили ID
-	if (subFolderID == -1)									// Если не группа, то скип
+	subFolderID = H5Gopen2(loc_id, name, H5P_DEFAULT);		// Открываем как группу
+	if (subFolderID == -1)									// Если это не группа, то пропускаем
 	{
 		return 0;
 	}
 	//cout << "SubFolder Name : " << name << endl;
 	countSubFolders++;
-	H5Literate(subFolderID, H5_INDEX_NAME, H5_ITER_INC, NULL, file_info, NULL);	// Поиск в текущей подгруппе
+	H5Literate(subFolderID, H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, NULL);	// Поиск в текущей подгруппе
 
 	H5Gclose(subFolderID);
 	return 0;
@@ -101,12 +101,39 @@ herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *
 long  Folder::GetCountFolder()																														
 {
 	countSubFolders = 0;
-	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, file_info, NULL);	// Посчитали сабгруппы
+	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, NULL);	// Посчитали сабгруппы
 	return	countSubFolders;
 }
+
+long countSubStreams;
+// Рекурсивный поиск датасетов в группах
+herr_t dataset_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+{
+	hid_t subObjectID;										// ID вложенного объекта		
+
+	subObjectID = H5Dopen2(loc_id, name, H5P_DEFAULT);		// Открываем как датасет
+	if (subObjectID != -1)									// Если это датасет, то счетчик увеличить
+	{
+		countSubStreams++;
+		H5Gclose(subObjectID);
+		return 0;
+	}
+
+	subObjectID = H5Gopen2(loc_id, name, H5P_DEFAULT);		// Открываем как группу 
+	if (subObjectID != -1)									// Если это группа, то ищем в ней
+	{
+		H5Literate(subObjectID, H5_INDEX_NAME, H5_ITER_INC, NULL, dataset_info, NULL);
+		H5Gclose(subObjectID);
+	}
+
+	return 0;
+}
+
 long  Folder::GetCountStream()																																///////
 {
-	return 0;
+	countSubStreams = 0;
+	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, dataset_info, NULL);	// Посчитали сабгруппы
+	return countSubStreams;
 }
 const char *  Folder::GetName()																																
 {

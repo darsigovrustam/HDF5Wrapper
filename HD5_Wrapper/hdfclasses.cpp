@@ -4,31 +4,43 @@
 #include "hdfclasses.h"
 
 
-const char * GetName()																															///////
+const char * Stream::GetName()																															///////
 {
-	return "ASD";
+	return name;
 }
-enHDFTtypes GetType()																															///////
+enHDFTtypes Stream::GetType()																															///////
 {
 	return htByte;
 }
-long GetLength()																															///////
+long Stream::GetLength()																															///////
 {
 	return 0;
 }
-bool Seek(long _offset)																															///////
+bool Stream::Seek(long _offset)																															///////
 {
 	return false;
 }
-long Read(void * _dest, long _cnt)																															///////
+long Stream::Read(void * _dest, long _cnt)																															///////
 {
 	return 0;
 }
-void Write(void * _src, long _cnt)																															///////
+void Stream::Write(void * _src, long _cnt)																															///////
 {
 	return;
 }
-
+Stream::Stream(const char * _name, enHDFTtypes _type, Group* _group)
+{
+	name = _name;
+	type = _type;
+	group = _group;
+	dataspace = NULL;
+	dataset = NULL;
+}
+Stream::~Stream()
+{
+	delete dataset;
+	delete dataspace;
+}
 
 
 
@@ -68,7 +80,23 @@ IHDFFolder *  Folder::GetParent()																																///////
 
 IHDFStream *   Folder::CreateStream(const char * _name, enHDFTtypes _type)																																///////
 {
-	return NULL;
+	try
+	{
+		DataSet(group->openDataSet(_name));				// Прочитать датасет
+	}
+	catch (GroupIException not_found_error)				// Если такого еще нет, то создать. Если такой есть, то вернуть NULL
+	{
+		char* fullname;
+		fullname = (char*)GetName();					// Путь до текущей директории
+		if (strcmp(fullname, "/") != 0)					// Если это не просто корень, 
+		{												// то вернуть stream с полным путем и именем
+			strcat(fullname, "/");	
+			strcat(fullname, _name);					
+			return new Stream(fullname, _type, group);	
+		}
+		return new Stream(_name, _type, group);			// Вернули stream с именем
+	}
+	return NULL;										
 }
 IHDFStream *   Folder::GetStream(const char * _name)																																///////
 {
@@ -129,7 +157,7 @@ herr_t dataset_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, voi
 	return 0;
 }
 
-long  Folder::GetCountStream()																																///////
+long  Folder::GetCountStream()																																
 {
 	countSubStreams = 0;
 	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, dataset_info, NULL);	// Посчитали сабгруппы
@@ -154,17 +182,16 @@ Folder::Folder(H5File *file_)
 	file = file_;						// Приняли файл
 	group = OpenGroup("/");				// Установить корень
 }
-Folder::Folder(H5File *file_, const char *groupName)
+Folder::Folder(H5File *file_, const char *_group)
 {
 	countSubFolders = 0;
 	file = file_;						// Приняли файл
-	group = OpenGroup(groupName);		// Установили нужную группу
+	group = OpenGroup(_group);		// Установили нужную группу
 }
 
 Folder::~Folder()
 {
 	delete group;
-	delete file;
 }
 
 

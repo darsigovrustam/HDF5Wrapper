@@ -4,6 +4,11 @@ using namespace HDF5Wrapper;
 
 class Stream : public IHDFStream
 {
+	Group* group;
+	DataSpace* dataspace;
+	DataSet* dataset;
+	enHDFTtypes type;
+	const char *name;
 public:
 	const char * GetName();
 	enHDFTtypes GetType();
@@ -11,16 +16,17 @@ public:
 	bool Seek(long _offset);
 	long Read(void * _dest, long _cnt); 
 	void Write(void * _src, long _cnt); 
+	Stream(const char * _name, enHDFTtypes _type, Group* _group);
+	~Stream();
 };
 
 class Folder : public IHDFFolder
 {
 private:
-	Group *group;								// На какую группу сылается Folder
-	H5File *file;								// В каком класссе
+	Group *group;														// На какую группу сылается Folder
+	H5File *file;														// В каком класссе
 private:
-	Group * OpenGroup(const char * groupName);	// Открывает группу в файле и возвращает хэндл на нее
-	//herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
+	Group * OpenGroup(const char * groupName);							// Открывает группу в файле и возвращает хэндл на нее
 public:
 	IHDFFolder *  GetFolder(const char * _name);
 	IHDFFolder *  GetFolder(long _index);
@@ -34,8 +40,8 @@ public:
 	long GetCountStream();
 	const char * GetName();
 
-	Folder(H5File *file_);													// Конструктор принимает файл от Storage, а так же устонавливает корень
-	Folder(H5File *file_, const char *groupName);							// Конструктор принимает файл от Storage, а так же устонавливает нужную папку
+	Folder(H5File *file_);												// Конструктор принимает файл от Storage, а так же устонавливает корень
+	Folder(H5File *file_, const char *_group);						// Конструктор принимает файл от Storage, а так же устонавливает нужную папку
 	~Folder();
 };
 class Storage : public IHDFStorage

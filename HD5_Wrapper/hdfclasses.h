@@ -18,9 +18,9 @@ class Folder : public IHDFFolder
 private:
 	Group *group;								// На какую группу сылается Folder
 	H5File *file;								// В каком класссе
-
 private:
 	Group * OpenGroup(const char * groupName);	// Открывает группу в файле и возвращает хэндл на нее
+	//herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
 public:
 	IHDFFolder *  GetFolder(const char * _name);
 	IHDFFolder *  GetFolder(long _index);

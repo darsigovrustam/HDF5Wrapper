@@ -79,22 +79,30 @@ IHDFStream *   Folder::GetStream(long _index)																																///
 	return NULL;
 }
 
+long countSubFolders;		// Счетчик поддиректорий
+// Рекурсивный поиск подгрупп в группе
+herr_t file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+{
+	hid_t subFolderID;										// ID подгруппы		
+
+	subFolderID = H5Gopen2(loc_id, name, H5P_DEFAULT);		// Получили ID
+	if (subFolderID == -1)									// Если не группа, то скип
+	{
+		return 0;
+	}
+	//cout << "SubFolder Name : " << name << endl;
+	countSubFolders++;
+	H5Literate(subFolderID, H5_INDEX_NAME, H5_ITER_INC, NULL, file_info, NULL);	// Поиск в текущей подгруппе
+
+	H5Gclose(subFolderID);
+	return 0;
+}
+
 long  Folder::GetCountFolder()																														
 {
-	char *name;					// Имя
-	long count = 0;				// Количество слэшей в  имени
-	int i = 0;
-
-	name = (char*)GetName();
-	
-	while (name[i] != 0)		// Посчитали сколько слэшей в полном имени
-	{
-		if (name[i++] == '/')
-		{
-			count++;
-		}
-	}
-	return count - 1;			// Вернули количество вложенных папок
+	countSubFolders = 0;
+	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, file_info, NULL);	// Посчитали сабгруппы
+	return	countSubFolders;
 }
 long  Folder::GetCountStream()																																///////
 {
@@ -115,11 +123,13 @@ const char *  Folder::GetName()
 
 Folder::Folder(H5File *file_)
 {
+	countSubFolders = 0;
 	file = file_;						// Приняли файл
 	group = OpenGroup("/");				// Установить корень
 }
 Folder::Folder(H5File *file_, const char *groupName)
 {
+	countSubFolders = 0;
 	file = file_;						// Приняли файл
 	group = OpenGroup(groupName);		// Установили нужную группу
 }

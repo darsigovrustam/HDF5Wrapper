@@ -8,12 +8,11 @@ int main()
 	//IHDFFolder *folder = folder->GetFolder("qwe");
 	IHDFStream *stream = folder->GetStream("record");
 
-	char *p;
-	stream->Seek(0);
-	long size = stream->Read((void**)&p, 5);
+	char p[] = "aaaaaaaaaa";
+
+	stream->Seek(10);
+	stream->Write(p, strlen(p));
 	cout << p << endl;
-	delete p;
-	size = stream->Read((void**)&p, 5);
 
 	getchar();
 	return 1;

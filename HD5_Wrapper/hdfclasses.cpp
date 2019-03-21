@@ -6,7 +6,14 @@
 
 const char * Stream::GetName()																															///////
 {
-	return name;
+	size_t len;
+	char *buffer;
+
+	len = H5Iget_name(dataset->getId(), NULL, 0);		// Узнали длину имени
+	buffer = new char[len + 1];							// Выделили память
+	H5Iget_name(dataset->getId(), buffer, len + 1);		// Узнали имя
+	name = buffer;
+	return buffer;										// Вернули полный путь
 }
 enHDFTtypes Stream::GetType()																															///////
 {
@@ -24,15 +31,156 @@ long Stream::Read(void * _dest, long _cnt)																															///////
 {
 	return 0;
 }
-void Stream::Write(void * _src, long _cnt)																															///////
+
+DataSet * Stream::createDataSet(const char *datasetName, Group *group, enHDFTtypes hdfType, DataSpace *dataspace)
 {
+	switch (hdfType)
+	{
+	case(htInt):
+		return new DataSet(group->createDataSet(datasetName, H5T_NATIVE_INT, *dataspace));
+	case(htUInt):
+		return new DataSet(group->createDataSet(datasetName, H5T_NATIVE_UINT, *dataspace));
+	default:
+		return new DataSet(group->createDataSet(datasetName, H5T_C_S1, *dataspace));
+	}
+}
+
+void Stream::writeData(void *data, DataSet *dataset, enHDFTtypes hdfType)
+{
+	switch (hdfType)
+	{
+	case (htInt):
+		dataset->write(data, H5T_NATIVE_INT);
+		return;
+
+	case (htUInt):
+		dataset->write(data, H5T_NATIVE_UINT);
+		return;
+	}
+	dataset->write(data, H5T_C_S1);
+}
+
+void Stream::initDataSet()
+{
+	hsize_t size = 0;	
+	dataspace = new DataSpace(1, &size);					// Создали dataspace (определили сколько нужно будет места)
+	dataset = createDataSet(name, group, type, dataspace);	// Создает датасет нужного типа
+	//writeData(0, dataset, type);
+	delete dataset;
+	delete dataspace;
+}
+
+DataSet * Stream::readDataSet(const char* name, Group *group)
+{
+	try
+	{
+		return new DataSet(group->openDataSet(name));
+	}
+	catch (GroupIException not_found_error)
+	{
+		return NULL;
+	}
+}
+
+void* Stream::readData(DataSet *dataset, hsize_t *writedDataSize)
+{
+	void* data;
+	auto dataClass = dataset->getTypeClass();
+
+	if(dataClass == H5T_INTEGER)						// Читаем если это int, либо uint
+	{
+		*writedDataSize = dataset->getStorageSize() / 4;
+		if (writedDataSize == 0)
+		{
+			return NULL;
+		}
+		data = new int[*writedDataSize];
+		dataset->read(data, H5T_NATIVE_INT);
+		return data;
+	}
+
+	*writedDataSize = dataset->getStorageSize();					// Читаем если это char или byte
+	if (writedDataSize == 0)
+	{
+		return (void*)"";
+	}
+	data = new char[*writedDataSize];
+	dataset->read(data, H5T_C_S1);
+
+	writedDataSize--;			// Символ конца первой строки не требуется
+	return data;
+}
+
+void * Stream::addArrayToArray(void *firstArray, void *secondArray, int firstArraySize, int secondArraySize)
+{
+	int *intData;					// Сумма массивов int
+	char *charData;					// Сумма массивов char
+	int i;
+
+
+
+	if (type == htInt || type == htUInt)			// Если тип int, то записываем оба массива в intData
+	{
+		intData = new int[firstArraySize + secondArraySize];
+		for (i = 0; i < firstArraySize; i++)
+		{
+			intData[i] = *((int*)firstArray + i);
+		}
+		for (int j = 0; j < secondArraySize; j++, i++)
+		{
+			intData[i] = *((int*)secondArray + j);
+		}
+		return intData;
+	}
+	else											// Аналогично с charData
+	{
+		charData = new char[firstArraySize + secondArraySize];	
+		for (i = 0; i < firstArraySize; i++)
+		{
+			charData[i] = *((char*)firstArray + i);
+		}
+		for (int j = 0; j < secondArraySize; j++, i++)
+		{
+			charData[i] = *((char*)secondArray + j);
+		}
+		return charData;
+	}
+
+}
+
+void Stream::Write(void * _src, long _cnt)																															///////
+{		
+
+	hsize_t writedDataSize;									// Размер данных, которые уже были в датасете
+	hsize_t size;											// Размер суммарных данных (writedDataSize + dataSize)
+
+	void *writedData = NULL;								// Данные, которые уже были в датасете
+	void *data = NULL;										// Суммарные данные (старые + новые), которые нужно записать в датасет
+
+
+	dataset = readDataSet(name, group);						// Считали существующий датасет
+	writedData = readData(dataset, &writedDataSize);		// Считали данные, которые уже были в датасете (во writedDataSize кладется размер)
+	H5Ldelete(group->getId(), GetName(), H5P_DEFAULT);		// Удалили старый датасет
+
+
+	data = addArrayToArray(writedData, _src, writedDataSize, _cnt);
+	
+	size = _cnt + writedDataSize;
+	dataspace = new DataSpace(1, &size);					// Создали dataspace (определили сколько нужно будет места)
+	dataset = createDataSet(name, group, type, dataspace);	// Создает датасет нужного типа
+	writeData(data, dataset, type);							// Пишет данные
+
 	return;
 }
-Stream::Stream(const char * _name, enHDFTtypes _type, Group* _group)
+Stream::Stream(const char * _name, enHDFTtypes _type, Group* _group, bool init)
 {
 	name = _name;
 	type = _type;
 	group = _group;
+	if (init)				// Создать пустой датасет, если установлен флаг init
+	{
+		initDataSet();
+	}
 	dataspace = NULL;
 	dataset = NULL;
 }
@@ -92,15 +240,30 @@ IHDFStream *   Folder::CreateStream(const char * _name, enHDFTtypes _type)						
 		{												// то вернуть stream с полным путем и именем
 			strcat(fullname, "/");	
 			strcat(fullname, _name);					
-			return new Stream(fullname, _type, group);	
+			return new Stream(fullname, _type, group, 1);	
 		}
-		return new Stream(_name, _type, group);			// Вернули stream с именем
+		return new Stream(_name, _type, group, 1);			// Вернули stream с именем
 	}
 	return NULL;										
 }
 IHDFStream *   Folder::GetStream(const char * _name)																																///////
 {
-	return NULL;
+	DataSet *tmp;
+	enHDFTtypes type;
+	try
+	{
+		tmp = new DataSet(group->openDataSet(_name));		// Проверить есть ли такой датасет
+	}	catch (GroupIException not_found_error)				// Если такого еще нет, то вернуть NULL
+	{
+		return NULL;
+	}
+
+
+	auto dataClass = tmp->getTypeClass();					// Определили тип
+	type = (dataClass == H5T_INTEGER) ? htInt : htChar;
+
+	delete tmp;
+	return new Stream(_name, type, group, 0);					// Вернули
 }
 IHDFStream *   Folder::GetStream(long _index)																																///////
 {
@@ -125,7 +288,6 @@ herr_t group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void 
 	H5Gclose(subFolderID);
 	return 0;
 }
-
 long  Folder::GetCountFolder()																														
 {
 	countSubFolders = 0;
@@ -133,7 +295,7 @@ long  Folder::GetCountFolder()
 	return	countSubFolders;
 }
 
-long countSubStreams;
+long countSubStreams;		// Счетчик вложенных датасетов
 // Рекурсивный поиск датасетов в группах
 herr_t dataset_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
 {
@@ -156,23 +318,21 @@ herr_t dataset_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, voi
 
 	return 0;
 }
-
 long  Folder::GetCountStream()																																
 {
 	countSubStreams = 0;
 	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, dataset_info, NULL);	// Посчитали сабгруппы
 	return countSubStreams;
 }
+
 const char *  Folder::GetName()																																
 {
 	size_t len;
 	char *buffer;
-	std::string name;
 
 	len = H5Iget_name(group->getId(), NULL, 0);			// Узнали длину имени
 	buffer = new char[len + 1];							// Выделили память
 	H5Iget_name(group->getId(), buffer, len + 1);		// Узнали имя
-	name = buffer;										// Положили имя в строку
 	return buffer;										// Вернули полный путь
 }
 

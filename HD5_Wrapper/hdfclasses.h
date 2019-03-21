@@ -4,11 +4,19 @@ using namespace HDF5Wrapper;
 
 class Stream : public IHDFStream
 {
+private:
 	Group* group;
 	DataSpace* dataspace;
 	DataSet* dataset;
 	enHDFTtypes type;
 	const char *name;
+private:
+	void* readData(DataSet *dataset, hsize_t *writedDataSize);	// Читает данные из датасета
+	void writeData(void *data, DataSet *dataset, enHDFTtypes hdfType);											// Пишет данные в датасет
+	DataSet * createDataSet(const char *datasetName, Group *group, enHDFTtypes hdfType, DataSpace *dataspace);	// Создает датасет
+	DataSet * readDataSet(const char* name, Group *group);	// Читает датасет
+	void initDataSet();			// Создает пустой датасет
+	void * addArrayToArray(void *firstArray, void *secondArray, int firstArraySize, int secondArraySize);		// Складывает 2 массива *void
 public:
 	const char * GetName();
 	enHDFTtypes GetType();
@@ -16,7 +24,7 @@ public:
 	bool Seek(long _offset);
 	long Read(void * _dest, long _cnt); 
 	void Write(void * _src, long _cnt); 
-	Stream(const char * _name, enHDFTtypes _type, Group* _group);
+	Stream(const char * _name, enHDFTtypes _type, Group* _group, bool init);				// Флаг init ставится в единицу, если стрим нужно создать, а не открыть
 	~Stream();
 };
 

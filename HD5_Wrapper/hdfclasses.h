@@ -10,8 +10,9 @@ private:
 	DataSet* dataset;
 	enHDFTtypes type;
 	const char *name;
-	int pointer;							// Указатель на позицию с которой нужно писать в файл
+	hsize_t pointer;					// Указатель на позицию с которой нужно писать в файл
 private:
+	int getDataSetInfo(DataSet *dataset, hsize_t *size);	// Возвращает 1, если датасет типа int. Возвращает 0, если датасет типа char. Кладет в size количество ячеек в датасете
 	void* readData(DataSet *dataset, hsize_t *writedDataSize);	// Читает данные из датасета
 	void writeData(void *data, DataSet *dataset, enHDFTtypes hdfType);											// Пишет данные в датасет
 	DataSet * createDataSet(const char *datasetName, Group *group, enHDFTtypes hdfType, DataSpace *dataspace);	// Создает датасет

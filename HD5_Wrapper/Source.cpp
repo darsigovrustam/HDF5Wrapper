@@ -4,13 +4,12 @@ int main()
 {
 	H5::Exception::dontPrint();
 	Storage *storage = new Storage();
-	IHDFFolder *folder = storage->Open("test.h5");
-	IHDFStream *stream = folder->GetStream("char");
+	IHDFFolder *folder = storage->Open("qwe.h5");
+	IHDFStream *stream = folder->GetStream("int");
 	
-	char c[] = "321";
-	char x[] = "123";
-	char hp[] = "hello world";
-	stream->Write(hp, strlen(hp));
+	int arr[] = { 0, 0, 0, 0 };
+	char arr2[] = "qqqqq";
+	stream->Write(arr, 2);
 	
 	
 	return 1;

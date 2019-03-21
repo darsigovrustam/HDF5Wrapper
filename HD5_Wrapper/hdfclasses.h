@@ -10,6 +10,7 @@ private:
 	DataSet* dataset;
 	enHDFTtypes type;
 	const char *name;
+	int pointer;							// ”казатель на позицию с которой нужно писать в файл
 private:
 	void* readData(DataSet *dataset, hsize_t *writedDataSize);	// „итает данные из датасета
 	void writeData(void *data, DataSet *dataset, enHDFTtypes hdfType);											// ѕишет данные в датасет

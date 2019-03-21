@@ -126,6 +126,7 @@ void * Stream::addArrayToArray(void *firstArray, void *secondArray, int firstArr
 		{
 			intData[i] = *((int*)firstArray + i);
 		}
+		i = pointer;
 		for (int j = 0; j < secondArraySize; j++, i++)
 		{
 			intData[i] = *((int*)secondArray + j);
@@ -139,6 +140,7 @@ void * Stream::addArrayToArray(void *firstArray, void *secondArray, int firstArr
 		{
 			charData[i] = *((char*)firstArray + i);
 		}
+		i = pointer;
 		for (int j = 0; j < secondArraySize; j++, i++)
 		{
 			charData[i] = *((char*)secondArray + j);
@@ -165,7 +167,13 @@ void Stream::Write(void * _src, long _cnt)																															///////
 
 	data = addArrayToArray(writedData, _src, writedDataSize, _cnt);
 	
-	size = _cnt + writedDataSize;
+	//size = _cnt - writedDataSize;
+	size = pointer + _cnt;
+	if (size < writedDataSize)
+	{
+		size = writedDataSize;
+	}
+
 	dataspace = new DataSpace(1, &size);					// Создали dataspace (определили сколько нужно будет места)
 	dataset = createDataSet(name, group, type, dataspace);	// Создает датасет нужного типа
 	writeData(data, dataset, type);							// Пишет данные
@@ -174,6 +182,7 @@ void Stream::Write(void * _src, long _cnt)																															///////
 }
 Stream::Stream(const char * _name, enHDFTtypes _type, Group* _group, bool init)
 {
+	pointer = 1;
 	name = _name;
 	type = _type;
 	group = _group;

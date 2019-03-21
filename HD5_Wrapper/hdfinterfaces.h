@@ -21,7 +21,7 @@ namespace HDF5Wrapper
         virtual enHDFTtypes GetType() = NULL; //возвращает тип
         virtual long GetLength() = NULL; //возвращает длинну (количество записанных данных )
         virtual bool Seek(long _offset) = NULL; //Перемещает указатель чтения/записи в позицию (вернет фальш если вне диапазона)
-        virtual long Read(void * _dest, long _cnt ) = NULL; //читает _cnt  элементов в _dest, с текущей позиции, возвращает реальное количество прочитанных элементов
+        virtual long Read(void ** _dest, long _cnt ) = NULL; //читает _cnt  элементов в _dest, с текущей позиции, возвращает реальное количество прочитанных элементов
         virtual void Write(void * _src, long _cnt ) = NULL; //пишет _cnt  элементов из _src, с текущей позиции
 
     };

@@ -27,13 +27,14 @@ bool Stream::Seek(long _offset)
 {
 	hsize_t size;
 	getDataSetInfo(dataset, &size);		// Узнали размер
-	if (_offset > (long)size)					// Если указатель выходит за границу справа, то установить его в конец
-	{
+
+	if (_offset > (long)size)			// Если указатель выходит за границу справа, 
+	{									// то установить его в конец
 		pointer = size;
 		return false;
 	}
-	else if(_offset < 0)				// Если указатель выходит за границу слева, то установить его в начало
-	{
+	if(_offset < 0)						// Если указатель выходит за границу слева, 
+	{									// то установить его в начало
 		pointer = 0;
 		return false;
 	}
@@ -41,9 +42,42 @@ bool Stream::Seek(long _offset)
 	pointer = _offset;					// Установили указатель в нужное место
 	return true;
 }
-long Stream::Read(void * _dest, long _cnt)																														
+long Stream::Read(void ** _dest, long _cnt)																														
 {
-	return 0;
+	void *data;
+	int *intData;
+	char *charData;
+	hsize_t size;								// Размер датасета
+
+	data = readData(dataset, &size);			// Считали данные из датасета
+	
+	if (long(size - pointer) < _cnt)
+	{
+		_cnt = size - pointer;
+	}
+
+
+	if (type == htInt || type == htUInt)		// Если int/uint - поместили данные в intData
+	{
+		*_dest = new int[_cnt];
+		intData = (int*)*_dest;
+		for (int i = 0, j = pointer; j < _cnt + pointer; i++, j++)
+		{
+			intData[i] = *((int*)data + j);
+		}
+	}
+	else										
+	{
+		*_dest = new char[_cnt];	// Char/byte - в charData
+		charData = (char*)*_dest;
+		for (int i = 0, j = pointer; j < _cnt + pointer; i++, j++)
+		{
+			charData[i] = *((char*)data + j);
+		}
+	}
+
+	pointer += _cnt;							// Сместили указатель
+	return _cnt;
 }
 
 DataSet * Stream::createDataSet(const char *datasetName, Group *group, enHDFTtypes hdfType, DataSpace *dataspace)
@@ -115,23 +149,20 @@ int Stream::getDataSetInfo(DataSet *dataset, hsize_t *size)
 void* Stream::readData(DataSet *dataset, hsize_t *writedDataSize)
 {
 	void* data;
-	auto dataClass = dataset->getTypeClass();
 	int type_;
 	
-	type_ = getDataSetInfo(dataset, writedDataSize);
-	if (type_)	// Прочесть как int, либо uint
+	if (getDataSetInfo(dataset, writedDataSize))	// Узнали тип, если это int/uint
 	{
 		if (writedDataSize == 0)
 		{
 			return NULL;
 		}
 		data = new int[*writedDataSize];
-		dataset->read(data, H5T_NATIVE_INT);
+		dataset->read(data, H5T_NATIVE_INT);	
 		return data;
 	}
 
-	// Прочеть как char или byte
-	*writedDataSize = dataset->getStorageSize();		
+	*writedDataSize = dataset->getStorageSize();	// Если это char/byte
 	if (writedDataSize == 0)
 	{
 		return (void*)"";
@@ -139,7 +170,7 @@ void* Stream::readData(DataSet *dataset, hsize_t *writedDataSize)
 	data = new char[*writedDataSize];
 	dataset->read(data, H5T_C_S1);
 
-	writedDataSize--;	// Символ конца первой строки не требуется
+	writedDataSize--;								// Символ конца первой строки не требуется
 	return data;
 }
 
@@ -148,8 +179,6 @@ void * Stream::addArrayToArray(void *firstArray, void *secondArray, int firstArr
 	int *intData;					// Сумма массивов int
 	char *charData;					// Сумма массивов char
 	int i;
-
-
 
 	if (type == htInt || type == htUInt)			// Если тип int, то записываем оба массива в intData
 	{
@@ -185,42 +214,42 @@ void * Stream::addArrayToArray(void *firstArray, void *secondArray, int firstArr
 void Stream::Write(void * _src, long _cnt)																														
 {		
 
-	hsize_t writedDataSize;									// Размер данных, которые уже были в датасете
-	hsize_t size;											// Размер суммарных данных (writedDataSize + dataSize)
+	hsize_t writedDataSize;											// Размер данных, которые уже были в датасете
+	hsize_t size;													// Размер суммарных данных (writedDataSize + dataSize)
 
-	void *writedData = NULL;								// Данные, которые уже были в датасете
-	void *data = NULL;										// Суммарные данные (старые + новые), которые нужно записать в датасет
+	void *writedData = NULL;										// Данные, которые уже были в датасете
+	void *data = NULL;												// Суммарные данные (старые + новые), которые нужно записать в датасет
 
-	writedData = readData(dataset, &writedDataSize);		// Считали данные, которые уже были в датасете (во writedDataSize кладется размер)
-	H5Ldelete(group->getId(), GetName(), H5P_DEFAULT);		// Удалили старый датасет
+	writedData = readData(dataset, &writedDataSize);				// Считали данные, которые уже были в датасете (во writedDataSize кладется размер)
+	H5Ldelete(group->getId(), GetName(), H5P_DEFAULT);				// Удалили старый датасет
 
 
-	data = addArrayToArray(writedData, _src, writedDataSize, _cnt);
+	data = addArrayToArray(writedData, _src, writedDataSize, _cnt);	// Складываем в data = (writedData + _src)
 	
-	//size = _cnt - writedDataSize;
 	size = pointer + _cnt;
 	if (size < writedDataSize)
 	{
 		size = writedDataSize;
 	}
 
-	dataspace = new DataSpace(1, &size);					// Создали dataspace (определили сколько нужно будет места)
-	dataset = createDataSet(name, group, type, dataspace);	// Создает датасет нужного типа
-	writeData(data, dataset, type);							// Пишет данные
+	dataspace = new DataSpace(1, &size);							// Создали dataspace (определили сколько нужно будет места)
+	dataset = createDataSet(name, group, type, dataspace);			// Создает датасет нужного типа
+	writeData(data, dataset, type);									// Пишет данные
 
-	pointer += _cnt;										// Сместили указатель
+	pointer += _cnt;												// Сместили указатель
 	return;
 }
+
 Stream::Stream(const char * _name, enHDFTtypes _type, Group* _group, bool init)
 {
 	name = _name;
 	type = _type;
 	group = _group;
-	if (init)				// Создать пустой датасет, если установлен флаг init
-	{
+	if (init)				// Создать пустой датасет,
+	{						// если установлен флаг init
 		initDataSet();
 	}
-	else					// Если флаг init в ноль, то 
+	else					// Если флаг init не установлен, то 
 	{
 		dataset = readDataSet(name, group);		// Считать датасет
 		getDataSetInfo(dataset, &pointer);		// Установить pointer в конец файла
@@ -245,10 +274,10 @@ IHDFFolder* Folder::GetFolder(const char * _name)
 	}
 	strcat(fullname, _name);					// Создали новый полный путь
 
-	return new Folder(file, fullname);						// Вернули folder новой группы
+	return new Folder(file, fullname);			// Вернули folder новой группы
 }
 
-Group * Folder::OpenGroup(const char * groupName)		// Возвращает существующую группу, либо создает ее
+Group * Folder::OpenGroup(const char * groupName)
 {
 	try
 	{
@@ -266,7 +295,28 @@ IHDFFolder *   Folder::GetFolder(long _index)
 }
 IHDFFolder *  Folder::GetParent()																															
 {
-	return NULL;
+	int i;
+	char* fullParentName;
+
+	fullParentName = (char*)GetName();
+	i = strlen(fullParentName) - 1;
+
+	if (!i)
+	{
+		return NULL;
+	}
+
+	while (i > 0)
+	{
+		if (fullParentName[i] == '/')
+		{
+			fullParentName[i] = 0;
+			break;
+		}
+		fullParentName[i--] = 0;
+	}
+	
+	return new Folder(file, fullParentName);;
 }
 
 IHDFStream *   Folder::CreateStream(const char * _name, enHDFTtypes _type)									
@@ -275,8 +325,8 @@ IHDFStream *   Folder::CreateStream(const char * _name, enHDFTtypes _type)
 	{
 		DataSet(group->openDataSet(_name));				// Прочитать датасет
 	}
-	catch (GroupIException not_found_error)				// Если такого еще нет, то создать. Если такой есть, то вернуть NULL
-	{
+	catch (GroupIException not_found_error)				// Если такого еще нет, то создать
+	{													// Если такой есть, то вернуть NULL
 		char* fullname;
 		fullname = (char*)GetName();					// Путь до текущей директории
 		if (strcmp(fullname, "/") != 0)					// Если это не просто корень, 
@@ -285,17 +335,18 @@ IHDFStream *   Folder::CreateStream(const char * _name, enHDFTtypes _type)
 			strcat(fullname, _name);					
 			return new Stream(fullname, _type, group, 1);	
 		}
-		return new Stream(_name, _type, group, 1);			// Вернули stream с именем
+		return new Stream(_name, _type, group, 1);		// Вернули stream с именем
 	}
 	return NULL;										
 }
+
 IHDFStream *   Folder::GetStream(const char * _name)																																
 {
 	DataSet *tmp;
 	enHDFTtypes type;
 	try
 	{
-		tmp = new DataSet(group->openDataSet(_name));		// Проверить есть ли такой датасет
+		tmp = new DataSet(group->openDataSet(_name));	// Проверить есть ли такой датасет
 	}	
 	catch (GroupIException not_found_error)				// Если такого еще нет, то вернуть NULL
 	{
@@ -303,12 +354,13 @@ IHDFStream *   Folder::GetStream(const char * _name)
 	}
 
 
-	auto dataClass = tmp->getTypeClass();					// Определили тип
+	auto dataClass = tmp->getTypeClass();				// Определили тип
 	type = (dataClass == H5T_INTEGER) ? htInt : htChar;
 
 	delete tmp;
-	return new Stream(_name, type, group, 0);					// Вернули
+	return new Stream(_name, type, group, 0);				
 }
+
 IHDFStream *   Folder::GetStream(long _index)																							
 {
 	return NULL;
@@ -386,19 +438,18 @@ Folder::Folder(H5File *file_)
 	file = file_;						// Приняли файл
 	group = OpenGroup("/");				// Установить корень
 }
+
 Folder::Folder(H5File *file_, const char *_group)
 {
 	countSubFolders = 0;
 	file = file_;						// Приняли файл
-	group = OpenGroup(_group);		// Установили нужную группу
+	group = OpenGroup(_group);			// Установили нужную группу
 }
 
 Folder::~Folder()
 {
 	delete group;
 }
-
-
 
 IHDFFolder* Storage::Create(const char * _path)
 {
@@ -408,10 +459,10 @@ IHDFFolder* Storage::Create(const char * _path)
 
 IHDFFolder * Storage::Open(const char * _path)
 {
-	try													// Если такой файл существует
+	try												// Если такой файл существует
 	{
-		file = new H5File(_path, H5F_ACC_RDWR);			// Открыли файл
-		return new Folder(file);						// Вернули folder с установленным корнем
+		file = new H5File(_path, H5F_ACC_RDWR);		// Открыли файл
+		return new Folder(file);					// Вернули folder с установленным корнем
 	}
 	catch (Exception e)
 	{

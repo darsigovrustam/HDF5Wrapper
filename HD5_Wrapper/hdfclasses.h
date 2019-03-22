@@ -10,7 +10,11 @@ private:
 	DataSet *dataset;
 
 	// Указатель на позицию с которой нужно писать в файл
-	hsize_t pointer;				
+	hsize_t pointer;	
+
+	// Количество вообще записанных данных в данный стрим
+	long writedDataCount;
+	
 	enHDFTtypes type;
 	const char *name;
 

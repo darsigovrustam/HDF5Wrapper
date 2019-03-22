@@ -7,12 +7,13 @@ int main()
 	IHDFFolder *folder = storage->Open("qwe.h5");
 	//IHDFFolder *folder = folder->GetFolder("qwe");
 	IHDFStream *stream = folder->GetStream("record");
+	stream->Seek(25);
+	char arr[] = "1234567890";
+	stream->Write(arr, 5);
+	stream->Write(arr, 10);
+	stream->Write(arr, 2);
 
-	char p[] = "aaaaaaaaaa";
-
-	stream->Seek(10);
-	stream->Write(p, strlen(p));
-	cout << p << endl;
+	cout << stream->GetLength();
 
 	getchar();
 	return 1;

@@ -6,6 +6,10 @@
 // Счетчик поддиректорий
 long countSubFolders;
 
+// Счетчик вложенных датасетов
+long countSubStreams;
+
+
 Stream::~Stream()
 {
 	delete dataset;
@@ -167,6 +171,7 @@ Stream::Stream(const char * _name, enHDFTtypes _type, Group* _group, bool init)
 	name = _name;
 	type = _type;
 	group = _group;
+	writedDataCount = 0;
 
 	// Если установлен флаг init
 	if (init)				
@@ -206,12 +211,12 @@ const char * Stream::GetName()
 
 enHDFTtypes Stream::GetType()																													
 {
-	return htByte;
+	return type;
 }
 
 long Stream::GetLength()																															
 {
-	return 0;
+	return writedDataCount;
 }
 
 bool Stream::Seek(long _offset)																															
@@ -323,7 +328,12 @@ void Stream::Write(void * _src, long _cnt)
 	writeData(data, dataset, type);									
 
 	// Сместили указатель
-	pointer += _cnt;												
+	pointer += _cnt;
+
+	// Посчитали общее количество записанных
+	// с помощью этого стрима данных
+	writedDataCount += _cnt;
+
 	return;
 }
 
@@ -513,9 +523,6 @@ long  Folder::GetCountFolder()
 	H5Literate(group->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, NULL);
 	return	countSubFolders;
 }
-
-// Счетчик вложенных датасетов
-long countSubStreams;		
 
 // Рекурсивный поиск датасетов в группах
 herr_t dataset_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)

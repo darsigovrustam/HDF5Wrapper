@@ -4,17 +4,26 @@ int main()
 {
 	H5::Exception::dontPrint();
 	Storage *storage = new Storage();
-	IHDFFolder *folder = storage->Open("qwe.h5");
-	//IHDFFolder *folder = folder->GetFolder("qwe");
-	IHDFStream *stream = folder->GetStream("record");
-	stream->Seek(25);
-	char arr[] = "1234567890";
-	stream->Write(arr, 5);
-	stream->Write(arr, 10);
-	stream->Write(arr, 2);
+	IHDFFolder *folder = storage->Open("aaa.h5");
 
-	cout << stream->GetLength();
+	IHDFStream *stream = folder->GetStream("uint");
+	IHDFStream *byteStream = folder->GetStream("byte");
 
-	getchar();
+	char *p;
+	unsigned int *i;
+
+	byteStream->Read((void**)&p, 6);
+	stream->Read((void**)&i, 3);
+
+
+;
+
+	IHDFFolder *folder2 = storage->Open("test.h5");
+	IHDFStream *stream2 = folder2->GetStream("int5");
+	int *intt;
+
+	stream2->Seek(0);
+	stream2->Read((void**)&intt, 2);
+
 	return 1;
 }

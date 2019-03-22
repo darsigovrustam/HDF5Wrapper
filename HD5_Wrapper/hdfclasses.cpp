@@ -121,7 +121,7 @@ void Stream::initDataSet()
 	pointer = 0;
 
 	dataspace = NULL;
-	delete dataset;
+	//delete dataset;
 	delete dataspace;
 }
 
@@ -304,8 +304,8 @@ void Stream::Write(void * _src, long _cnt)
 	void *data = NULL;												
 
 	// Считали данные, которые уже были в датасете (во writedDataSize кладется размер)
-	writedData = readData(dataset, &writedDataSize);			
-
+	writedData = readData(dataset, &writedDataSize);
+	
 	// Удалили старый датасет
 	H5Ldelete(group->getId(), GetName(), H5P_DEFAULT);				
 
@@ -358,8 +358,6 @@ Group * Folder::OpenGroup(const char * groupName)
 
 Folder::Folder(H5File *file_)
 {
-	countSubFolders = 0;
-
 	// Приняли файл
 	file = file_;					
 
@@ -369,8 +367,6 @@ Folder::Folder(H5File *file_)
 
 Folder::Folder(H5File *file_, const char *_group)
 {
-	countSubFolders = 0;
-
 	// Приняли файл
 	file = file_;
 
